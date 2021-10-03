@@ -1,31 +1,31 @@
 package web.dao;
 
-import org.hibernate.Session;
-import org.hibernate.Transaction;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import web.model.User;
-
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
-import javax.persistence.Query;
 import javax.transaction.Transactional;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 @Transactional
 public class UserDaoImpl implements UserDao {
 
-    @PersistenceContext
+    // К сожалению, если я для внедрения бина entityManager делаю конструктор и внедряю через @Autowired, то на сервере
+    // вылетает ошибка при обращении к контроллеру. Если ставлю аннотацию над конструктором @PersistenceContext, то ее
+    // подчеркивает IDEA красным шрифтом и просит удалить.
+    // все работает лишь при сеттере.
+
     private EntityManager entityManager;
 
+    @PersistenceContext
+    public void setEntityManager(EntityManager entityManager) {
+        this.entityManager = entityManager;
+    }
 
     @Override
     public List<User> index() {
-        List<User> userList = entityManager.createQuery("SELECT user from User user").getResultList();
-        return userList;
+        return entityManager.createQuery("SELECT user from User user").getResultList();
     }
 
 
@@ -36,29 +36,28 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public User show(int id) {
-        Query query = entityManager.createQuery("SELECT user from User user where user.id=:id");
-        query.setParameter("id", id);
-        User user = (User) query.getSingleResult();
-        return user;
+        return (User) entityManager.createQuery("SELECT user from User user where user.id=:id")
+                .setParameter("id", id)
+                .getSingleResult();
     }
 
     @Override
-    public void update(int id, User user) {
-        Query query = entityManager.createQuery(
-                "UPDATE User user SET user.name=:name, user.email=:email, user.age=:age WHERE user.id=:id");
-        query.setParameter("name", user.getName());
-        query.setParameter("email", user.getEmail());
-        query.setParameter("age", user.getAge());
-        query.setParameter("id", id);
-        query.executeUpdate();
+    public void update(User user) {
+        entityManager.createQuery(
+                        "UPDATE User user SET user.name=:name, user.email=:email, user.age=:age WHERE user.id=:id")
+            .setParameter("name", user.getName())
+            .setParameter("email", user.getEmail())
+            .setParameter("age", user.getAge())
+            .setParameter("id", user.getId())
+            .executeUpdate();
     }
 
     @Override
     public void delete(int id) {
-        Query query = entityManager.createQuery(
-                "DELETE FROM User user WHERE user.id=:id");
-        query.setParameter("id", id);
-        query.executeUpdate();
+        entityManager.createQuery(
+            "DELETE FROM User user WHERE user.id=:id")
+        .setParameter("id", id)
+        .executeUpdate();
     }
 
 }
